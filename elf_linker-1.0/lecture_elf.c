@@ -21,6 +21,7 @@ int IsElf(unsigned char *str) {
 
 void lectureHead(FILE *f){
 
+	fread(&header, 1, sizeof(Elf32_Ehdr), f);
 	header.e_type = bswap_16(header.e_type);
 	header.e_machine = bswap_16(header.e_machine);
 	header.e_version =  bswap_32(header.e_version);
@@ -34,9 +35,6 @@ void lectureHead(FILE *f){
 	header.e_shentsize = bswap_16(header.e_shentsize);
 	header.e_shnum = bswap_16(header.e_shnum);
 	header.e_shstrndx = bswap_16(header.e_shstrndx);
-
-	fread(&header, 1, sizeof(Elf32_Ehdr), f);
-
 	if (IsElf(header.e_ident) != 1) {
 		printf("ERREUR ! Fichier non ELF\n");
 		exit(1);
@@ -45,16 +43,7 @@ void lectureHead(FILE *f){
 
 void lectureSection(FILE *f){
 
-	section.sh_name = bswap_32(section.sh_name);
-	section.sh_type = bswap_32(section.sh_type);
-	section.sh_flags = bswap_32(section.sh_flags);
-	section.sh_addr = bswap_32(section.sh_addr);
-	section.sh_offset = bswap_32(section.sh_offset);
-	section.sh_size = bswap_32(section.sh_size);
-	section.sh_link = bswap_32(section.sh_link);
-	section.sh_info = bswap_32(section.sh_info);
-	section.sh_addralign = bswap_32(section.sh_addralign);
-	section.sh_entsize = bswap_32(section.sh_entsize);
+
 
 	fseek(f, header.e_shoff + header.e_shentsize * header.e_shstrndx, SEEK_SET);
 
@@ -72,6 +61,16 @@ void lectureSection(FILE *f){
 
 		fseek(f, header.e_shoff + i * sizeof(Elf32_Shdr), SEEK_SET);
 		fread(&sct[i].sect, 1, sizeof(section), f);
+		sct[i].sect.sh_name = bswap_32(sct[i].sect.sh_name);
+		sct[i].sect.sh_type = bswap_32(sct[i].sect.sh_type);
+		sct[i].sect.sh_flags = bswap_32(sct[i].sect.sh_flags);
+		sct[i].sect.sh_addr = bswap_32(sct[i].sect.sh_addr);
+		sct[i].sect.sh_offset = bswap_32(sct[i].sect.sh_offset);
+		sct[i].sect.sh_size = bswap_32(sct[i].sect.sh_size);
+		sct[i].sect.sh_link = bswap_32(sct[i].sect.sh_link);
+		sct[i].sect.sh_info = bswap_32(sct[i].sect.sh_info);
+		sct[i].sect.sh_addralign = bswap_32(sct[i].sect.sh_addralign);
+		sct[i].sect.sh_entsize = bswap_32(sct[i].sect.sh_entsize);
 
 		if (sct[i].sect.sh_name) {
 			sct[i].nom = sect_nom + sct[i].sect.sh_name;
@@ -84,20 +83,6 @@ void lectureSection(FILE *f){
 
 
 void print_header() {
-
-	header.e_type = bswap_16(header.e_type);
-	header.e_machine = bswap_16(header.e_machine);
-	header.e_version =  bswap_32(header.e_version);
-	header.e_entry = bswap_32(header.e_entry);
-	header.e_phoff = bswap_32(header.e_phoff);
-	header.e_shoff = bswap_32(header.e_shoff);
-	header.e_flags = bswap_32(header.e_flags);
-	header.e_ehsize = bswap_16(header.e_ehsize);
-	header.e_phentsize = bswap_16(header.e_phentsize);
-	header.e_phnum = bswap_16(header.e_phnum);
-	header.e_shentsize = bswap_16(header.e_shentsize);
-	header.e_shnum = bswap_16(header.e_shnum);
-	header.e_shstrndx = bswap_16(header.e_shstrndx);
 
     printf("En-tête ELF: \n");
     printf("    Magic: ");
@@ -316,16 +301,6 @@ void print_header() {
 
 void print_section() {
 
-	section.sh_name = bswap_32(section.sh_name);
-	section.sh_type = bswap_32(section.sh_type);
-	section.sh_flags = bswap_32(section.sh_flags);
-	section.sh_addr = bswap_32(section.sh_addr);
-	section.sh_offset = bswap_32(section.sh_offset);
-	section.sh_size = bswap_32(section.sh_size);
-	section.sh_link = bswap_32(section.sh_link);
-	section.sh_info = bswap_32(section.sh_info);
-	section.sh_addralign = bswap_32(section.sh_addralign);
-	section.sh_entsize = bswap_32(section.sh_entsize);
 
 	printf("\nIl y a %d en-têtes de section, débutant à l'adresse de décalage 0x%x:\n", header.e_shnum, header.e_shoff);
 
@@ -354,17 +329,6 @@ void print_section() {
 		for (int j=strlen(sct[i].nom); j<Lmax; j++) {
 			printf(" ");
 		}
-		
-		sct[i].sect.sh_name = bswap_32(sct[i].sect.sh_name);
-		sct[i].sect.sh_type = bswap_32(sct[i].sect.sh_type);
-		sct[i].sect.sh_flags = bswap_32(sct[i].sect.sh_flags);
-		sct[i].sect.sh_addr = bswap_32(sct[i].sect.sh_addr);
-		sct[i].sect.sh_offset = bswap_32(sct[i].sect.sh_offset);
-		sct[i].sect.sh_size = bswap_32(sct[i].sect.sh_size);
-		sct[i].sect.sh_link = bswap_32(sct[i].sect.sh_link);
-		sct[i].sect.sh_info = bswap_32(sct[i].sect.sh_info);
-		sct[i].sect.sh_addralign = bswap_32(sct[i].sect.sh_addralign);
-		sct[i].sect.sh_entsize = bswap_32(sct[i].sect.sh_entsize);
 
 		switch(sct[i].sect.sh_type){
 			case 0:
@@ -503,13 +467,13 @@ void print_section() {
 
 		printf("\n");
 	}
-	printf("Clé des fanions :\n  W (écriture), A (allocation), X (exécution), M (fusion), S (chaînes), I (info),\n  L (ordre des liens), O (traitement supplémentaire par l'OS requis), G (groupe),\n  T (TLS), C (compressé), x (inconnu), o (spécifique à l'OS), E (exclu),\n  y (purecode), p (processor specific)\n");
+	printf("Clé des fanions :\n  W (écriture), A (allocation), X (exécution), M (fusion), S (chaînes), I (info),\n  L (ordre des liens), O (traitement supplémentaire par l'OS requis), G (groupe),\n  T (TLS), C (compressé), x (inconnu), o (spécifique à l'OS), E (exclu),\n  y (purecode), p (processor specific)\n");
 }
 
-char *afficheContenuNumero(int valeur){
+void afficheContenuNumero(int valeur){
 	
 	if(valeur >= 12){
-		return "";
+		printf(" ");
 	}
 	printf("[%d] %s ", valeur,sct[valeur].nom);
 	switch(bswap_32(sct[valeur].sect.sh_type)){
@@ -607,7 +571,7 @@ char *afficheContenuNumero(int valeur){
 	printf(" %d",bswap_32(sct[valeur].sect.sh_addralign));
 }
 
-char *afficheContenuString(char *valeur){
+void afficheContenuString(char *valeur){
 	printf("%s\n", valeur);
 	int i;
 	int index;
