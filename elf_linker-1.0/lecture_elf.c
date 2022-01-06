@@ -42,7 +42,6 @@ void lectureSection(FILE *f){
 	for (int i=0; i<bswap_16(header.e_shnum); i++) {
 
 		sct[i].nom = "";
-		printf("\n%s\n", sct[i].nom);
 
 		fseek(f, bswap_32(header.e_shoff) + i * sizeof(Elf32_Shdr), SEEK_SET);
 		fread(&sct[i].sect, 1, sizeof(section), f);
@@ -276,108 +275,170 @@ void print_header() {
 
 void print_section() {
 
-	printf("Il y a %d en-têtes de section, débutant à l'adresse de décalage 0x%x:\n", bswap_16(header.e_shnum), bswap_32(header.e_shoff));
+	printf("\nIl y a %d en-têtes de section, débutant à l'adresse de décalage 0x%x:\n", bswap_16(header.e_shnum), bswap_32(header.e_shoff));
 
-	printf("\n[NR]	Nom			Type		Adr		Décala	Taille	ES	Fan	LN	Inf	Al\n");
+	int Lmax = 3; // Longueur du mot "Nom", longueur minimum de la colonne.
+	int L;
+	for (int i=0; i<bswap_16(header.e_shnum); i++) {
+		L = strlen(sct[i].nom);
+		if (L>Lmax)
+			Lmax = L;
+	}
+	Lmax++;
 
-		for (int i=0; i<bswap_16(header.e_shnum); i++) {
-		printf("[%d]	%s		", i, sct[i].nom);
+	printf("\n[NR] Nom");
+	for (int j=3; j<Lmax; j++) {
+		printf(" ");
+	}
+	
+	printf("Type           Adr      Décala Taille ES Fan LN Inf Al\n");
+	
+	for (int i=0; i<bswap_16(header.e_shnum); i++) {
+		printf("[%02d] ", i);
+		
+		printf("%s", sct[i].nom);
+		for (int j=strlen(sct[i].nom); j<Lmax; j++) {
+			printf(" ");
+		}
+		
 		switch(bswap_32(sct[i].sect.sh_type)){
 			case 0:
-			printf("NULL");
-			break;
+				printf("NULL");
+				L = 4;
+				break;
 			case 1:
-			printf("PROGBITS");
-			break;
+				printf("PROGBITS");
+				L = 8;
+				break;
 			case 2:
-			printf("SYMTAB");
-			break;
+				printf("SYMTAB");
+				L = 6;
+				break;
 			case 3:
-			printf("STRTAB");
-			break;
+				printf("STRTAB");
+				L = 6;
+				break;
 			case 4:
-			printf("RELA");
-			break;
+				printf("RELA");
+				L = 4;
+				break;
 			case 5:
-			printf("HASH");
-			break;
+				printf("HASH");
+				L = 4;
+				break;
 			case 6:
-			printf("DYNAMIC");
-			break;
+				printf("DYNAMIC");
+				L = 7;
+				break;
 			case 7:
-			printf("NOTE");
-			break;
+				printf("NOTE");
+				L = 4;
+				break;
 			case 8:
-			printf("NOBITS");
-			break;
+				printf("NOBITS");
+				L = 6;
+				break;
 			case 9:
-			printf("REL");
-			break;
+				printf("REL");
+				L = 3;
+				break;
 			case 10:
-			printf("SHLIB");
-			break;
+				printf("SHLIB");
+				L = 5;
+				break;
 			case 11:
-			printf("DYNSYM");
-			break;
+				printf("DYNSYM");
+				L = 6;
+				break;
 			case 0x70000003:
-			printf("ARM_ATTRIBUTES");
-			break;
+				printf("ARM_ATTRIBUTES");
+				L = 14;
+				break;
 			case 0x70000000:
-			printf("LOPROC");
-			break;
+				printf("LOPROC");
+				L = 6;
+				break;
 			case 0x7fffffff:
-			printf("HIPROC");
-			break;
+				printf("HIPROC");
+				L = 6;
+				break;
 			case 0x80000000:
-			printf("LOUSER");
-			break;
+				printf("LOUSER");
+				L = 6;
+				break;
 			case 0xffffffff:
-			printf("HIUSER");
-			break;
+				printf("HIUSER");
+				L = 6;
+				break;
 			default:
-			printf("ERROR");
+				printf("ERROR");
+				L = 5;
 		}
-		printf("%08x     %06x      %06x     %02x ",bswap_32(sct[i].sect.sh_addr),bswap_32(sct[i].sect.sh_offset),bswap_32(sct[i].sect.sh_size),bswap_32(sct[i].sect.sh_entsize));
+		while (L<15) {
+			printf(" ");
+			L++;
+		}
+		printf("%08x %06x %06x %02x ",bswap_32(sct[i].sect.sh_addr),bswap_32(sct[i].sect.sh_offset),bswap_32(sct[i].sect.sh_size),bswap_32(sct[i].sect.sh_entsize));
+		L = 0;
 		if(bswap_32(sct[i].sect.sh_flags) & 1<<0){
 			printf("W");
-			}
+			L++;
+		}
 		if(bswap_32(sct[i].sect.sh_flags) & 1<<1){
 			printf("A");
-			}
+			L++;
+		}
 		if(bswap_32(sct[i].sect.sh_flags) & 1<<2){
 			printf("X");
+			L++;
 		}
 		if(bswap_32(sct[i].sect.sh_flags) & 1<<4){
 			printf("M");
-			}
+			L++;
+		}
 		if(bswap_32(sct[i].sect.sh_flags) & 1<<5){
 			printf("S");
-			}
+			L++;
+		}
 		if(bswap_32(sct[i].sect.sh_flags) & 1<<6){
 			printf("I");
-			}
+			L++;
+		}
 		if(bswap_32(sct[i].sect.sh_flags) & 1<<7){
 			printf("L");
-			}
+			L++;
+		}
 		if(bswap_32(sct[i].sect.sh_flags) & 1<<8){
 			printf("o");
-			}
+			L++;
+		}
 		if(bswap_32(sct[i].sect.sh_flags) & 1<<9){
 			printf("G");
-			}
+			L++;
+		}
 		if(bswap_32(sct[i].sect.sh_flags) & 1<<10){
 			printf("T");
-			}
+			L++;
+		}
 		if(bswap_32(sct[i].sect.sh_flags) & 1<<31){
 			printf("E");
-			
-			}
-	printf(" %d ",bswap_32(sct[i].sect.sh_link));
-	printf(" %d ",bswap_32(sct[i].sect.sh_info));
-	printf("%d ",bswap_32(sct[i].sect.sh_addralign));
+			L++;
+		}
+		while (L<4) {
+			printf(" ");
+			L++;
+		}
+		printf("%d  ",bswap_32(sct[i].sect.sh_link));
+		if (bswap_32(sct[i].sect.sh_link)<10)
+			printf(" ");
+		printf("%d ",bswap_32(sct[i].sect.sh_info));
+		if (bswap_32(sct[i].sect.sh_info)<10)
+			printf(" ");
+		printf("%d",bswap_32(sct[i].sect.sh_addralign));
 
-	printf("\n");}
-}
+		printf("\n");
+	}
+	printf("Clé des fanions :\n  W (écriture), A (allocation), X (exécution), M (fusion), S (chaînes), I (info),\n  L (ordre des liens), O (traitement supplémentaire par l'OS requis), G (groupe),\n  T (TLS), C (compressé), x (inconnu), o (spécifique à l'OS), E (exclu),\n  y (purecode), p (processor specific)\n");
 }
 
 
