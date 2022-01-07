@@ -49,11 +49,11 @@ void lectureSection(FILE *f){
 
 	fread(&section, 1, sizeof(section), f);
 
-	char* sect_nom = malloc(section.sh_size);
+	char* sect_nom = malloc(bswap_32(section.sh_size));
 
-	fseek(f, section.sh_offset, SEEK_SET);
+	fseek(f, bswap_32(section.sh_offset), SEEK_SET);
 
-	fread(sect_nom, 1, section.sh_size, f);
+	fread(sect_nom, 1,bswap_32(section.sh_size), f);
 
 	for (int i=0; i<header.e_shnum; i++) {
 
@@ -97,12 +97,12 @@ void lectureSymbol (FILE *f){
 	for (int j=0;j<sct[i].sect.sh_size/16;j++){
 		sym[j].nom = "";
 		fread(&sym[j].S,1,sizeof(Elf32_Sym),f);
-		 sym[j].S.st_name = bswap_32(sym[j].S.st_name);
-   	     sym[j].S.st_value = bswap_32(sym[j].S.st_value);
-   		 sym[j].S.st_size = bswap_32(sym[j].S.st_size);
-    	 sym[j].S.st_info = bswap_32(sym[j].S.st_info);
-    	 sym[j].S.st_other = bswap_32(sym[j].S.st_other);
-    	 sym[j].S.st_shndx = bswap_32(sym[j].S.st_shndx);
+		sym[j].S.st_name = bswap_32(sym[j].S.st_name);
+   	        sym[j].S.st_value = bswap_32(sym[j].S.st_value);
+   		sym[j].S.st_size = bswap_32(sym[j].S.st_size);
+    	 	sym[j].S.st_info = bswap_32(sym[j].S.st_info);
+    	 	sym[j].S.st_other = bswap_32(sym[j].S.st_other);
+    	 	sym[j].S.st_shndx = bswap_32(sym[j].S.st_shndx);
 		if (sym[j].S.st_name){
         		sym[j].nom = sym_nom + sym[j].S.st_name;}
     }
