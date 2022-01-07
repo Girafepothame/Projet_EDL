@@ -54,6 +54,11 @@ typedef struct {
 } Elf32_Sym;
 
 typedef struct {
+    Elf32_Sym S;
+    char *nom;
+} symbole_n;
+
+typedef struct {
     uint32_t r_offset;
     uint32_t r_info;
 } Elf32_Rel;
