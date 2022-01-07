@@ -42,9 +42,6 @@ void lectureHead(FILE *f){
 }
 
 void lectureSection(FILE *f){
-
-
-
 	fseek(f, header.e_shoff + header.e_shentsize * header.e_shstrndx, SEEK_SET);
 
 	fread(&section, 1, sizeof(section), f);
@@ -92,21 +89,19 @@ void lectureSymbol (FILE *f){
 	while(strcmp(sct[i].nom,".symtab") && i<header.e_shnum){
 			i++;
 		}
-	sym=malloc(sct[i].sect.sh_size);
 	fseek(f,sct[i].sect.sh_offset,SEEK_SET);
-	for (int j=0;j<sct[i].sect.sh_size/16;j++){
+	sym=malloc(sct[i].sect.sh_size);
+	sym->taille=sct[i].sect.sh_size/16;
+	for (int j=0;j<sym->taille;j++){
 		sym[j].nom = "";
 		fread(&sym[j].S,1,sizeof(Elf32_Sym),f);
 		sym[j].S.st_name = bswap_32(sym[j].S.st_name);
    	        sym[j].S.st_value = bswap_32(sym[j].S.st_value);
    		sym[j].S.st_size = bswap_32(sym[j].S.st_size);
-    	 	sym[j].S.st_info = bswap_32(sym[j].S.st_info);
-    	 	sym[j].S.st_other = bswap_32(sym[j].S.st_other);
-    	 	sym[j].S.st_shndx = bswap_32(sym[j].S.st_shndx);
+    	 	sym[j].S.st_shndx = bswap_16(sym[j].S.st_shndx);
 		if (sym[j].S.st_name){
         		sym[j].nom = sym_nom + sym[j].S.st_name;}
     }
-    free(sym);
 }
 
 
@@ -611,7 +606,80 @@ void afficheContenuString(char *valeur){
 	afficheContenuNumero(index);
 	
 }
-
+void print_symbole() {
+	printf("Symbol table '.symtab' contains %d entries:\n",sym->taille);
+	printf("Num:    Value  Size Type    Bind    Vis      Ndx Name\n");
+	for (int j=0;j<sym->taille;j++){
+		printf(" %2d : %.8x     %d ",j,sym[j].S.st_value,sym[j].S.st_size);
+		switch(ELF32_ST_TYPE(sym[j].S.st_info)){
+			case 0:
+			printf("NOTYPE  ");
+			break;
+			case 1:
+			printf("OBJECT  ");
+			break;
+			case 2:
+			printf("FUNC   ");
+			break;
+			case 3:
+			printf("SECTION ");
+			break;
+			case 4:
+			printf("FILE    ");
+			break;
+			case 13:
+			printf("LOPROC ");
+			break;			
+			case 15:
+			printf("HIPROC ");
+			break;	
+		}
+		switch(ELF32_ST_BIND(sym[j].S.st_info)){
+			case 0:
+			printf("LOCAL  ");
+			break;
+			case 1:
+			printf("GLOBAL ");
+			break;
+			case 2:
+			printf("WEAK   ");
+			break;
+			case 13:
+			printf("LOPROC ");
+			break;			
+			case 15:
+			printf("HIPROC ");
+			break;	
+		}
+	printf("DEFAULT ");
+		switch(sym[j].S.st_shndx){
+			case 0:
+			printf("UND  ");
+			break;
+			case 0xff00:
+			printf("LOPROC  ");
+			break;
+			case 0xff1f:
+			printf("HIPROC   ");
+			break;
+			case 0xfff1:
+			printf("ABS ");
+			break;			
+			case 0xfff2:
+			printf("COMMON ");
+			break;
+			case 0xffff :
+			printf("HIRESERVE ");
+			break;	
+			default :
+			printf("%2d ",sym[j].S.st_shndx);
+			break;
+	
+	}
+	printf("%s",sym[j].nom);
+	printf("\n");
+	}
+}
 
 int main(int argc , char **argv)
 {
