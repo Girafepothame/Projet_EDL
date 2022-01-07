@@ -9,7 +9,7 @@
 Elf32_Ehdr header;
 Elf32_Shdr section;
 section_n *sct;
-
+symbole_n *sym;
 
 int IsElf(unsigned char *str) {
     if(str[0] == 0x7f && str[1] == 'E' && str[2] == 'L' && str[3] == 'F')
@@ -80,6 +80,34 @@ void lectureSection(FILE *f){
 
 	}
 } 
+void lectureSymbol (FILE *f){
+	int i=0;
+ 	while(strcmp(sct[i].nom,".strtab") && i<header.e_shnum){
+			i++;
+		}
+	char *sym_nom = malloc(sct[i].sect.sh_size);
+	fseek(f,sct[i].sect.sh_offset,SEEK_SET);
+	fread(sym_nom, 1,sct[i].sect.sh_size, f);
+	i=0;
+	while(strcmp(sct[i].nom,".symtab") && i<header.e_shnum){
+			i++;
+		}
+	sym=malloc(sct[i].sect.sh_size);
+	fseek(f,sct[i].sect.sh_offset,SEEK_SET);
+	for (int j=0;j<sct[i].sect.sh_size/16;j++){
+		sym[j].nom = "";
+		fread(&sym[j].S,1,sizeof(Elf32_Sym),f);
+		 sym[j].S.st_name = bswap_32(sym[j].S.st_name);
+   	     sym[j].S.st_value = bswap_32(sym[j].S.st_value);
+   		 sym[j].S.st_size = bswap_32(sym[j].S.st_size);
+    	 sym[j].S.st_info = bswap_32(sym[j].S.st_info);
+    	 sym[j].S.st_other = bswap_32(sym[j].S.st_other);
+    	 sym[j].S.st_shndx = bswap_32(sym[j].S.st_shndx);
+		if (sym[j].S.st_name){
+        		sym[j].nom = sym_nom + sym[j].S.st_name;}
+    }
+    free(sym);
+}
 
 
 void print_header() {
