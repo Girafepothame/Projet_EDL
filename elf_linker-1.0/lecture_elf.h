@@ -56,6 +56,7 @@ typedef struct {
 typedef struct {
     Elf32_Sym S;
     char *nom;
+    int taille;
 } symbole_n;
 
 typedef struct {
