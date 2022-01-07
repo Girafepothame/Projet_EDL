@@ -5,6 +5,10 @@
 #include <byteswap.h>
 #include "lecture_elf.h"
 
+#define ELF32_ST_BIND(i) ((i)>>4)
+#define ELF32_ST_TYPE(i) ((i)&0xf)
+#define ELF32_ST_INFO(b,t) (((b)<<4)+((t)&0xf))
+
 
 Elf32_Ehdr header;
 Elf32_Shdr section;
@@ -607,7 +611,7 @@ void afficheContenuString(char *valeur){
 	
 }
 void print_symbole() {
-	printf("Symbol table '.symtab' contains %d entries:\n",sym->taille);
+	printf("\nSymbol table '.symtab' contains %d entries:\n",sym->taille);
 	printf("Num:    Value  Size Type    Bind    Vis      Ndx Name\n");
 	for (int j=0;j<sym->taille;j++){
 		printf(" %2d : %.8x     %d ",j,sym[j].S.st_value,sym[j].S.st_size);
@@ -695,5 +699,11 @@ int main(int argc , char **argv)
     lectureSection(f);
     print_section();
     fclose(f);
+
+	f = fopen(argv[1],"r");
+    lectureSymbol(f);
+    print_symbole();
+    fclose(f);
+
     return 0;
 }
