@@ -8,6 +8,9 @@
 
 Elf32_Ehdr header;
 Elf32_Shdr section;
+Elf32_Rel **relocation;
+Elf32_Rela **relocationA;
+
 section_n *sct;
 symbole_n *sym;
 
@@ -16,6 +19,18 @@ int IsElf(unsigned char *str) {
     	return 1;
     else
     	return 0;
+}
+
+int isNumber(char *n) {
+
+  int i = strlen(n);
+  int isnum = (i>0);
+  while (i-- && isnum) {
+    if (!(n[i] >= '0' && n[i] <= '9')) {
+      isnum = 0;
+    }
+  }
+  return isnum;
 }
 
 
@@ -40,6 +55,47 @@ void lectureHead(FILE *f){
 		exit(1);
 	}
 }
+
+void lectureReloc (FILE *f){
+	int count = 0;
+	
+	for(int i=0; i<header.e_shnum; i++){
+		if (sct[i].sect.sh_type == 9 || sct[i].sect.sh_type == 4) {
+			count++;
+		}
+	}
+	relocation = malloc(sizeof(Elf32_Rel*) * count * 4); // BON ...
+
+ 	for(int i=0; i<header.e_shnum; i++){
+		if (sct[i].sect.sh_type == 9 || sct[i].sect.sh_type == 4) {
+			switch(header.e_type) {
+				case 1: // cas repositionnable
+					fseek(f, sct[i].sect.sh_offset, SEEK_SET);
+					break;
+				case 2: // cas executable
+				case 3: // cas objet partagé
+					printf("On n'a pas de RelA");
+					break;
+			}
+
+
+			//printf(" taille de section : %d \n",sct[i].sect.sh_size);
+			relocation[i] = malloc(sizeof(Elf32_Rel) * sct[i].sect.sh_size); // C'EST MOCHE MAIS NIK CA PASSE
+
+			fread(relocation[i], 1, sizeof(Elf32_Rel)*sct[i].sect.sh_size/8, f);
+			
+			for (int j = 0; j<sct[i].sect.sh_size/8; j++) {
+				relocation[i][j].r_offset = bswap_32(relocation[i][j].r_offset);
+				relocation[i][j].r_info = bswap_32(relocation[i][j].r_info);
+				
+				// printf(" %08x, %08x,%d,%08x\n", relocation[i][j].r_offset, relocation[i][j].r_info,ELF32_R_TYPE(relocation[i][j].r_info),ELF32_R_SYM(relocation[i][j].r_info));
+			}
+		}
+	}
+
+
+}
+
 
 void lectureSection(FILE *f){
 	fseek(f, header.e_shoff + header.e_shentsize * header.e_shstrndx, SEEK_SET);
@@ -80,6 +136,7 @@ void lectureSection(FILE *f){
 		sct[i].sect.sh_info = bswap_32(sct[i].sect.sh_info);
 		sct[i].sect.sh_addralign = bswap_32(sct[i].sect.sh_addralign);
 		sct[i].sect.sh_entsize = bswap_32(sct[i].sect.sh_entsize);
+
 
 		if (sct[i].sect.sh_name) {
 			sct[i].nom = sect_nom + sct[i].sect.sh_name;
@@ -125,33 +182,43 @@ void lectureSymbol (FILE *f){
     }
 }
 
-void lectureReloc (FILE *f){
-	for (int i=0; i<header.e_shnum; i++) {
-		if(sct[i].sect.sh_type == 4) {
-			printf("Coucou etape 1 \n");
-		}
-
-
-	}
-
-
-
-	// switch(header.e_type) {
-	// 	case 1: // cas repositionnable
-
-	// 		break;
-	// 	case 2: // cas executable
-	// 	case 3: // cas objet partagé
-
-	// 		break;
-	// }
-}
 
 
 void printReloc() {
-//	 printf("Section de réadressage '%s' a l'adresse de décalage %x contient %d entrées ",);
-// 	 printf("  Décalage        Info           Type           Val.-symboles Noms-symb.+ Addenda");
 
+	for(int i=0; i<header.e_shnum; i++){
+		if (sct[i].sect.sh_type == 9 || sct[i].sect.sh_type == 4) {
+			printf("Section de réadressage '%s' a l'adresse de décalage 0x%x contient %d entrées \n", sct[i].nom, sct[i].sect.sh_offset, sct[i].sect.sh_size/8);
+			printf("  Décalage        Info           Type           Val.-sym	Noms-symboles\n");
+			
+			//printf("section: %s\n", sct[i].nom);
+			
+			for (int j = 0; j<sct[i].sect.sh_size/8; j++) {
+				printf(" %08x        %08x        ", relocation[i][j].r_offset, relocation[i][j].r_info);
+
+				switch(ELF32_R_TYPE(relocation[i][j].r_info)) {
+					case 2:
+            			printf("R_ARM_ABS32");
+						break;
+					case 28:
+            			printf("R_ARM_CALL");
+						break;
+					case 29:
+            			printf("R_ARM_JUMP24");
+						break;
+				}
+
+				printf("	%08x", sym[ELF32_R_SYM(relocation[i][j].r_info)].S.st_value);
+
+				if(ELF32_ST_TYPE(sym[ELF32_R_SYM(relocation[i][j].r_info)].S.st_info) == 3) {
+            			printf("	%s", sct[ELF32_R_SYM(relocation[i][j].r_info)].nom);
+				} else {
+            			printf("	%s", sym[ELF32_R_SYM(relocation[i][j].r_info)].nom);
+				}
+				printf("\n");
+			}
+		}
+	}
 }
 
 
@@ -708,7 +775,7 @@ int main(int argc , char **argv)
 				}else if (!strcmp(argv[i], "-r")) {
 					aff_rel = 1;
 				}else if (entree==NULL) {
-                    // Le premier ergument qui n'est pas une option est le nom du fichier d'entrée.
+                    // Le premier argument qui n'est pas une option est le nom du fichier d'entrée.
                     entree = argv[i];
                 }
             }
@@ -742,13 +809,7 @@ int main(int argc , char **argv)
 	lectureReloc(f);
 	fclose(f);
 
-	if (argv[2] != NULL) { // à voir pour automatiser si argv[2] est int ou char*
-		f = fopen(entree,"r");
-		// int num = atoi(argv[2]);
-		char *num = argv[2];
-		afficheContenuString(num, f);
-    	fclose(f);
-	}
+	
 
     if (aff_hd){
         print_header();
@@ -763,7 +824,7 @@ int main(int argc , char **argv)
 	}
 
 	if (aff_rel) {
-      // lectureReloc(f);
+    	printReloc();
 	}
 
 	if (aff_all) {
@@ -772,9 +833,13 @@ int main(int argc , char **argv)
         print_symbole();
 	}
 
-	// f = fopen(argv[1],"r");
-	// lectureReloc(f);
-	// fclose(f);
+	if (argv[2] != NULL && isNumber(argv[2])) { // à voir pour automatiser si argv[2] est int ou char*
+		f = fopen(entree,"r");
+		int num = atoi(argv[2]);
+		//char *num = argv[2];
+		afficheContenuNumero(num, f);
+    	fclose(f);
+	}
 
     return 0;
 }
