@@ -9,9 +9,9 @@
 
 #define ELF32_R_SYM(i) ((i)>>8)
 #define ELF32_R_TYPE(i) ((unsigned char)(i))
+#define ELF32_R_INFO(s,t) (((s)<<8)+(unsigned char)(t))
 
 #include <stdint.h>
-
 
 
 typedef struct {
@@ -67,10 +67,13 @@ typedef struct {
     int taille;
 } symbole_n;
 
+
+
 typedef struct {
     uint32_t r_offset;
     uint32_t r_info;
 } Elf32_Rel;
+
 typedef struct {
     uint32_t r_offset;
     uint32_t r_info;
