@@ -5,10 +5,6 @@
 #include <byteswap.h>
 #include "lecture_elf.h"
 
-#define ELF32_ST_BIND(i) ((i)>>4)
-#define ELF32_ST_TYPE(i) ((i)&0xf)
-#define ELF32_ST_INFO(b,t) (((b)<<4)+((t)&0xf))
-
 
 Elf32_Ehdr header;
 Elf32_Shdr section;
@@ -50,11 +46,22 @@ void lectureSection(FILE *f){
 
 	fread(&section, 1, sizeof(section), f);
 
-	char* sect_nom = malloc(bswap_32(section.sh_size));
+	section.sh_name = bswap_32(section.sh_name);
+	section.sh_type = bswap_32(section.sh_type);
+	section.sh_flags = bswap_32(section.sh_flags);
+	section.sh_addr = bswap_32(section.sh_addr);
+	section.sh_offset = bswap_32(section.sh_offset);
+	section.sh_size = bswap_32(section.sh_size);
+	section.sh_link = bswap_32(section.sh_link);
+	section.sh_info = bswap_32(section.sh_info);
+	section.sh_addralign = bswap_32(section.sh_addralign);
+	section.sh_entsize = bswap_32(section.sh_entsize);
 
-	fseek(f, bswap_32(section.sh_offset), SEEK_SET);
+	char* sect_nom = malloc(section.sh_size);
 
-	fread(sect_nom, 1,bswap_32(section.sh_size), f);
+	fseek(f, section.sh_offset, SEEK_SET);
+
+	fread(sect_nom, 1, section.sh_size, f);
 
 	for (int i=0; i<header.e_shnum; i++) {
 
@@ -62,6 +69,7 @@ void lectureSection(FILE *f){
 
 		fseek(f, header.e_shoff + i * sizeof(Elf32_Shdr), SEEK_SET);
 		fread(&sct[i].sect, 1, sizeof(section), f);
+
 		sct[i].sect.sh_name = bswap_32(sct[i].sect.sh_name);
 		sct[i].sect.sh_type = bswap_32(sct[i].sect.sh_type);
 		sct[i].sect.sh_flags = bswap_32(sct[i].sect.sh_flags);
@@ -80,33 +88,72 @@ void lectureSection(FILE *f){
 		// printf("\n%d\n", i);
 
 	}
-} 
+}
+
+
 void lectureSymbol (FILE *f){
 	int i=0;
  	while(strcmp(sct[i].nom,".strtab") && i<header.e_shnum){
 			i++;
-		}
+	}
+
 	char *sym_nom = malloc(sct[i].sect.sh_size);
 	fseek(f,sct[i].sect.sh_offset,SEEK_SET);
 	fread(sym_nom, 1,sct[i].sect.sh_size, f);
+
+
 	i=0;
 	while(strcmp(sct[i].nom,".symtab") && i<header.e_shnum){
 			i++;
-		}
+	}
+
 	fseek(f,sct[i].sect.sh_offset,SEEK_SET);
-	sym=malloc(sct[i].sect.sh_size);
+	sym=malloc(sizeof(symbole_n)*sct[i].sect.sh_size);
 	sym->taille=sct[i].sect.sh_size/16;
 	for (int j=0;j<sym->taille;j++){
 		sym[j].nom = "";
+
 		fread(&sym[j].S,1,sizeof(Elf32_Sym),f);
+
 		sym[j].S.st_name = bswap_32(sym[j].S.st_name);
-   	        sym[j].S.st_value = bswap_32(sym[j].S.st_value);
-   		sym[j].S.st_size = bswap_32(sym[j].S.st_size);
-    	 	sym[j].S.st_shndx = bswap_16(sym[j].S.st_shndx);
+		sym[j].S.st_value = bswap_32(sym[j].S.st_value);
+		sym[j].S.st_size = bswap_32(sym[j].S.st_size);
+		sym[j].S.st_shndx = bswap_16(sym[j].S.st_shndx);
+
 		if (sym[j].S.st_name){
         		sym[j].nom = sym_nom + sym[j].S.st_name;}
     }
 }
+
+void lectureReloc (FILE *f){
+	for (int i=0; i<header.e_shnum; i++) {
+		if(sct[i].sect.sh_type == 4) {
+			printf("Coucou etape 1 \n");
+		}
+
+
+	}
+
+
+
+	// switch(header.e_type) {
+	// 	case 1: // cas repositionnable
+
+	// 		break;
+	// 	case 2: // cas executable
+	// 	case 3: // cas objet partagé
+
+	// 		break;
+	// }
+}
+
+
+void printReloc() {
+//	 printf("Section de réadressage '%s' a l'adresse de décalage %x contient %d entrées ",);
+// 	 printf("  Décalage        Info           Type           Val.-symboles Noms-symb.+ Addenda");
+
+}
+
 
 
 void print_header() {
@@ -497,187 +544,143 @@ void print_section() {
 	printf("Clé des fanions :\n  W (écriture), A (allocation), X (exécution), M (fusion), S (chaînes), I (info),\n  L (ordre des liens), O (traitement supplémentaire par l'OS requis), G (groupe),\n  T (TLS), C (compressé), x (inconnu), o (spécifique à l'OS), E (exclu),\n  y (purecode), p (processor specific)\n");
 }
 
-void afficheContenuNumero(int valeur){
-	
-	if(valeur >= 12){
-		printf(" ");
+void afficheContenuNumero(int valeur, FILE *f){
+	int i;
+	int taille;
+	int c;
+	if(valeur >= header.e_shnum){
+		printf("ERROR pas de section %d\n", valeur);
+		exit(1);
 	}
-	printf("[%d] %s ", valeur,sct[valeur].nom);
-	switch(bswap_32(sct[valeur].sect.sh_type)){
-			case 0:
-				printf("NULL");
-				break;
-			case 1:
-				printf("PROGBITS ");
-				break;
-			case 2:
-				printf("SYMTAB");
-				break;
-			case 3:
-				printf("STRTAB");
-				break;
-			case 4:
-				printf("RELA");
-				break;
-			case 5:
-				printf("HASH");
-				break;
-			case 6:
-				printf("DYNAMIC");
-				break;
-			case 7:
-				printf("NOTE");
-				break;
-			case 8:
-				printf("NOBITS");
-				break;
-			case 9:
-				printf("REL");
-				break;
-			case 10:
-				printf("SHLIB");
-				break;
-			case 11:
-				printf("DYNSYM");
-				break;
-			case 0x70000003:
-				printf("ARM_ATTRIBUTES");
-				break;
-			case 0x70000000:
-				printf("LOPROC");
-				break;
-			case 0x7fffffff:
-				printf("HIPROC");
-				break;
-			case 0x80000000:
-				printf("LOUSER");
-				break;
-			case 0xffffffff:
-				printf("HIUSER");
-				break;
-			default:
-				printf("ERROR");
+	fseek(f, sct[valeur].sect.sh_offset, SEEK_SET);
+	unsigned char *tab = malloc(sct[valeur].sect.sh_size);
+	taille = 0;
+	if(tab != NULL){
+		printf("Vidange hexadécimale de la section « %s »  \n", sct[valeur].nom);
+		fread(tab, 1, sct[valeur].sect.sh_size, f);
+		for(i = 0; i < sct[valeur].sect.sh_size;i++){	
+		
+			if( i%16==0){
+				printf("\n");
+				if(bswap_32(sct[valeur].sect.sh_size) == 16){
+					printf("0x%08x", sct[valeur].sect.sh_addr);
+				}else{
+					printf("0x%08x", taille);
+					taille +=16;
+				}
+			}
+			if((i%4) == 0){
+					printf(" ");
+				}
+			printf("%02x", tab[i]);
 		}
-		printf("%x ", bswap_32(sct[valeur].sect.sh_type));
-		printf("%08x %06x %06x %02x ",bswap_32(sct[valeur].sect.sh_addr),bswap_32(sct[valeur].sect.sh_offset),bswap_32(sct[valeur].sect.sh_size),bswap_32(sct[valeur].sect.sh_entsize));
-	if(bswap_32(sct[valeur].sect.sh_flags) & 1<<0){
-			printf("W");
-		}
-		if(bswap_32(sct[valeur].sect.sh_flags) & 1<<1){
-			printf("A");
-		}
-		if(bswap_32(sct[valeur].sect.sh_flags) & 1<<2){
-			printf("X");
-		}
-		if(bswap_32(sct[valeur].sect.sh_flags) & 1<<4){
-			printf("M");
-		}
-		if(bswap_32(sct[valeur].sect.sh_flags) & 1<<5){
-			printf("S");
-		}
-		if(bswap_32(sct[valeur].sect.sh_flags) & 1<<6){
-			printf("I");
-		}
-		if(bswap_32(sct[valeur].sect.sh_flags) & 1<<7){
-			printf("L");
-		}
-		if(bswap_32(sct[valeur].sect.sh_flags) & 1<<8){
-			printf("o");
-		}
-		if(bswap_32(sct[valeur].sect.sh_flags) & 1<<9){
-			printf("G");
-		}
-		if(bswap_32(sct[valeur].sect.sh_flags) & 1<<10){
-			printf("T");
-		}
-		if(bswap_32(sct[valeur].sect.sh_flags) & 1<<31){
-			printf("E");
-		}
-	printf(" %d ",bswap_32(sct[valeur].sect.sh_info));
-	printf(" %d  ",bswap_32(sct[valeur].sect.sh_link));
-	printf(" %d",bswap_32(sct[valeur].sect.sh_addralign));
+		printf("\n");
+		for(i=0; i<sct[valeur].sect.sh_size; i++){
+			c = (int) tab[i];
+			//printf("\ndeci : %d , hexa : %02x\n",c, tab[i]);
+			if( i%16==0){
+				printf("\n");
+			}
+			if(c >= 33 && c <= 126){
+				printf("%c", c);
+			}
+			else{
+				printf(".");
+			}
+		}	
+	}
+	if(sct[valeur].sect.sh_size == 0){
+		printf("La section « %s » n'a pas de données à vidanger", sct[valeur].nom);
+	}
 }
 
-void afficheContenuString(char *valeur){
+void afficheContenuString(char *valeur, FILE *f){
 	printf("%s\n", valeur);
 	int i;
 	int index;
-	for( i = 0; i < 12; i++){
+	
+	for( i = 0; i < header.e_shnum; i++){
+		//printf("valeur : %s sct|i].nom : %s \n", valeur, sct[i].nom);
+		//printf("valeur : %s sct|i].nom : %s \n", valeur, sct[index].nom);
 		if(strcmp(valeur, sct[i].nom) == 0){
 			index = i;
 		}
 	}
-	afficheContenuNumero(index);
-	
+	printf("index section : %d", index);
+	afficheContenuNumero(index, f);
 }
+
+
+
 void print_symbole() {
 	printf("\nSymbol table '.symtab' contains %d entries:\n",sym->taille);
 	printf("Num:    Value  Size Type    Bind    Vis      Ndx Name\n");
+	
 	for (int j=0;j<sym->taille;j++){
 		printf(" %2d : %.8x     %d ",j,sym[j].S.st_value,sym[j].S.st_size);
 		switch(ELF32_ST_TYPE(sym[j].S.st_info)){
 			case 0:
-			printf("NOTYPE  ");
-			break;
+				printf("NOTYPE  ");
+				break;
 			case 1:
-			printf("OBJECT  ");
-			break;
+				printf("OBJECT  ");
+				break;
 			case 2:
-			printf("FUNC   ");
-			break;
+				printf("FUNC   ");
+				break;
 			case 3:
-			printf("SECTION ");
-			break;
+				printf("SECTION ");
+				break;
 			case 4:
-			printf("FILE    ");
-			break;
+				printf("FILE    ");
+				break;
 			case 13:
-			printf("LOPROC ");
-			break;			
+				printf("LOPROC ");
+				break;			
 			case 15:
-			printf("HIPROC ");
-			break;	
+				printf("HIPROC ");
+				break;	
 		}
 		switch(ELF32_ST_BIND(sym[j].S.st_info)){
 			case 0:
-			printf("LOCAL  ");
-			break;
+				printf("LOCAL  ");
+				break;
 			case 1:
-			printf("GLOBAL ");
-			break;
+				printf("GLOBAL ");
+				break;
 			case 2:
-			printf("WEAK   ");
-			break;
+				printf("WEAK   ");
+				break;
 			case 13:
-			printf("LOPROC ");
-			break;			
+				printf("LOPROC ");
+				break;			
 			case 15:
-			printf("HIPROC ");
-			break;	
+				printf("HIPROC ");
+				break;	
 		}
 	printf("DEFAULT ");
 		switch(sym[j].S.st_shndx){
 			case 0:
-			printf("UND  ");
-			break;
+				printf("UND  ");
+				break;
 			case 0xff00:
-			printf("LOPROC  ");
-			break;
+				printf("LOPROC  ");
+				break;
 			case 0xff1f:
-			printf("HIPROC   ");
-			break;
+				printf("HIPROC   ");
+				break;
 			case 0xfff1:
-			printf("ABS ");
-			break;			
+				printf("ABS ");
+				break;			
 			case 0xfff2:
-			printf("COMMON ");
-			break;
+				printf("COMMON ");
+				break;
 			case 0xffff :
-			printf("HIRESERVE ");
-			break;	
+				printf("HIRESERVE ");
+				break;	
 			default :
-			printf("%2d ",sym[j].S.st_shndx);
-			break;
+				printf("%2d ",sym[j].S.st_shndx);
+				break;
 	
 	}
 	printf("%s",sym[j].nom);
@@ -687,23 +690,91 @@ void print_symbole() {
 
 int main(int argc , char **argv)
 {
-    FILE *f;
-    f = fopen(argv[1],"r");
+    char *entree = NULL; // Nom du fichier en entrée.
+	int aff_all = 0; 	 // Tout afficher
+    int aff_hd = 0;      // Est-ce qu'on affiche le header du fichier ? (-h)
+    int aff_sc = 0;      // Est-ce qu'on affiche les headers des sections ? (-S)
+	int aff_sb = 0;      // Est-ce qu'on affiche la table des symboles ? (-s)
+	int aff_rel = 0;     // Est-ce qu'on affiche la table de réalocation ? (-r)
+    for (int i=1; i<argc; i++) {
+        if (!strcmp(argv[i], "-h")) {
+            aff_hd = 1;
+        } else {
+            if (!strcmp(argv[i], "-S")) {
+                aff_sc = 1;
+            } else {
+				if (!strcmp(argv[i], "-s")) {
+					aff_sb = 1;
+				}else if (!strcmp(argv[i], "-r")) {
+					aff_rel = 1;
+				}else if (entree==NULL) {
+                    // Le premier ergument qui n'est pas une option est le nom du fichier d'entrée.
+                    entree = argv[i];
+                }
+            }
+        }
+    }
+	if(argc == 2) {
+		aff_all = 1;
+	}
+    if (entree==NULL) {
+        printf("Aucun nom de fichier donné en argument.\n");
+        return 2;
+    }
+
+    FILE *f = fopen(entree,"r");
     lectureHead(f);
-    print_header();
     fclose(f);
-	
+    
+    
     sct = malloc(sizeof(section_n) * header.e_shnum);
-	
-    f = fopen(argv[1],"r");
+    
+    f = fopen(entree,"r");
     lectureSection(f);
-    print_section();
     fclose(f);
 
-	f = fopen(argv[1],"r");
+
+	f = fopen(entree,"r");
     lectureSymbol(f);
-    print_symbole();
     fclose(f);
+
+	f = fopen(entree,"r");
+	lectureReloc(f);
+	fclose(f);
+
+	if (argv[2] != NULL) { // à voir pour automatiser si argv[2] est int ou char*
+		f = fopen(entree,"r");
+		// int num = atoi(argv[2]);
+		char *num = argv[2];
+		afficheContenuString(num, f);
+    	fclose(f);
+	}
+
+    if (aff_hd){
+        print_header();
+	}
+	
+    if (aff_sc){
+        print_section();
+	}
+	
+    if (aff_sb) {
+        print_symbole();
+	}
+
+	if (aff_rel) {
+      // lectureReloc(f);
+	}
+
+	if (aff_all) {
+        print_header();
+        print_section();
+        print_symbole();
+	}
+
+	// f = fopen(argv[1],"r");
+	// lectureReloc(f);
+	// fclose(f);
 
     return 0;
 }
