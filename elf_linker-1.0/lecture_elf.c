@@ -188,8 +188,10 @@ void printReloc() {
 
 	for(int i=0; i<header.e_shnum; i++){
 		if (sct[i].sect.sh_type == 9 || sct[i].sect.sh_type == 4) {
-			printf("Section de réadressage '%s' a l'adresse de décalage 0x%x contient %d entrées \n", sct[i].nom, sct[i].sect.sh_offset, sct[i].sect.sh_size/8);
-			printf("  Décalage        Info           Type           Val.-sym	Noms-symboles\n");
+			printf("\nSection de réadressage '%s' à l'adresse de décalage 0x%x contient %d entrée", sct[i].nom, sct[i].sect.sh_offset, sct[i].sect.sh_size/8);
+			if ((sct[i].sect.sh_size/8)>1)
+				printf("s");
+			printf(" :\n  Décalage        Info           Type           Val.-sym	Noms-symboles\n");
 			
 			//printf("section: %s\n", sct[i].nom);
 			
@@ -680,8 +682,8 @@ void afficheContenuString(char *valeur, FILE *f){
 
 
 void print_symbole() {
-	printf("\nSymbol table '.symtab' contains %d entries:\n",sym->taille);
-	printf("Num:    Value  Size Type    Bind    Vis      Ndx Name\n");
+	printf("\nLa table de symboles « .symtab » contient %d entrées :\n",sym->taille);
+	printf("Num:    Valeur Tail Type    Lien    Vis      Ndx Nom\n");
 	
 	for (int j=0;j<sym->taille;j++){
 		printf(" %2d : %.8x     %d ",j,sym[j].S.st_value,sym[j].S.st_size);
