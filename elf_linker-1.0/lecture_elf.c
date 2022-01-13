@@ -93,6 +93,7 @@ void lectureReloc (FILE *f){
 		}
 	}
 
+	free(relocation);
 
 }
 
@@ -178,8 +179,11 @@ void lectureSymbol (FILE *f){
 		sym[j].S.st_shndx = bswap_16(sym[j].S.st_shndx);
 
 		if (sym[j].S.st_name){
-        		sym[j].nom = sym_nom + sym[j].S.st_name;}
+			sym[j].nom = sym_nom + sym[j].S.st_name;
+		}
     }
+	
+	free(sym_nom);
 }
 
 
@@ -188,10 +192,8 @@ void printReloc() {
 
 	for(int i=0; i<header.e_shnum; i++){
 		if (sct[i].sect.sh_type == 9 || sct[i].sect.sh_type == 4) {
-			printf("\nSection de réadressage '%s' à l'adresse de décalage 0x%x contient %d entrée", sct[i].nom, sct[i].sect.sh_offset, sct[i].sect.sh_size/8);
-			if ((sct[i].sect.sh_size/8)>1)
-				printf("s");
-			printf(" :\n  Décalage        Info           Type           Val.-sym	Noms-symboles\n");
+			printf("Section de réadressage '%s' a l'adresse de décalage 0x%x contient %d entrées \n", sct[i].nom, sct[i].sect.sh_offset, sct[i].sect.sh_size/8);
+			printf("  Décalage        Info           Type           Val.-sym	Noms-symboles\n");
 			
 			//printf("section: %s\n", sct[i].nom);
 			
@@ -445,8 +447,8 @@ void print_header() {
 void print_section() {
 
 
-	printf("\nIl y a %d en-têtes de section, débutant à l'adresse de décalage 0x%x:\n", header.e_shnum, header.e_shoff);
-
+	printf("Il y a %d en-têtes de section, débutant à l'adresse de décalage 0x%x:\n", header.e_shnum, header.e_shoff);
+	printf("\nEn-têtes de section :");
 	int Lmax = 3; // Longueur du mot "Nom", longueur minimum de la colonne.
 	int L;
 	for (int i=0; i<header.e_shnum; i++) {
@@ -456,18 +458,19 @@ void print_section() {
 	}
 	Lmax++;
 
-	printf("\n[NR] Nom");
+	printf("\n[Nr] Nom");
 	for (int j=3; j<Lmax; j++) {
 		printf(" ");
 	}
 	
-	printf("Type           Adr      Décala Taille ES Fan LN Inf Al\n");
+	printf("Type           Adr      Décala.Taille ES Fan LN Inf Al\n");
 	
 	for (int i=0; i<header.e_shnum; i++) {
 
-
-		printf("[%02d] ", i);
-		
+		if (i<10)
+			printf("[ %d] ", i);
+		else
+			printf("[%d] ", i);
 		printf("%s", sct[i].nom);
 		for (int j=strlen(sct[i].nom); j<Lmax; j++) {
 			printf(" ");
@@ -614,59 +617,65 @@ void print_section() {
 }
 
 void afficheContenuNumero(int valeur, FILE *f){
-	int i;
-	int taille;
-	int c;
-	if(valeur >= header.e_shnum){
-		printf("ERROR pas de section %d\n", valeur);
-		exit(1);
-	}
-	fseek(f, sct[valeur].sect.sh_offset, SEEK_SET);
-	unsigned char *tab = malloc(sct[valeur].sect.sh_size);
-	taille = 0;
-	if(tab != NULL){
-		printf("Vidange hexadécimale de la section « %s »  \n", sct[valeur].nom);
-		fread(tab, 1, sct[valeur].sect.sh_size, f);
-		for(i = 0; i < sct[valeur].sect.sh_size;i++){	
-		
-			if( i%16==0){
-				printf("\n");
-				if(sct[valeur].sect.sh_size == 16){
-					printf("0x%08x", sct[valeur].sect.sh_addr);
-				}else{
-					printf("0x%08x", taille);
-					taille +=16;
-				}
-			}
-			if((i%4) == 0){
-					printf(" ");
-				}
-			printf("%02x", tab[i]);
-		}
-		printf("\n");
-		for(i=0; i<sct[valeur].sect.sh_size; i++){
-			c = (int) tab[i];
-			//printf("\ndeci : %d , hexa : %02x\n",c, tab[i]);
-			if( i%16==0){
-				printf("\n");
-			}
-			if(c >= 33 && c <= 126){
-				printf("%c", c);
-			}
-			else{
-				printf(".");
-			}
-		}	
-	}
-	if(sct[valeur].sect.sh_size == 0){
-		printf("La section « %s » n'a pas de données à vidanger", sct[valeur].nom);
-	}
+    int i;
+    int taille;
+    int c;
+    int palier;
+    if(valeur >= header.e_shnum){
+        printf("ERROR pas de section %d\n", valeur);
+        exit(1);
+    }
+    fseek(f, sct[valeur].sect.sh_offset, SEEK_SET);
+    unsigned char *tab = malloc(sct[valeur].sect.sh_size);
+    taille = 0;
+    if(tab != NULL && sct[valeur].sect.sh_size != 0) {
+        printf("Vidange hexadécimale de la section « %s » :\n", sct[valeur].nom);
+        fread(tab, 1, sct[valeur].sect.sh_size, f);
+        for(palier = 0; palier < sct[valeur].sect.sh_size; palier = palier + 16){
+            if (sct[valeur].sect.sh_size == 16){
+                printf("0x%08x", sct[valeur].sect.sh_addr);
+            } else {
+                printf("0x%08x", taille);
+                taille +=16;
+            }
+            for (i=palier; i<palier+16; i++) {
+                if((i%4) == 0){
+                    printf(" ");
+                }
+                if (i < sct[valeur].sect.sh_size) {
+                    printf("%02x", tab[i]);
+                } else {
+                    printf("  ");
+                }
+            }
+            printf(" ");
+            for (i=palier; i<palier + 16; i++){
+                c = (int) tab[i];
+                //printf("\ndeci : %d , hexa : %02x\n",c, tab[i]);
+                if (i < sct[valeur].sect.sh_size) {
+                    if(c >= 33 && c <= 126){
+                        printf("%c", c);
+                    }
+                    else{
+                        printf(".");
+                    }
+                } else {
+                    printf(" ");
+                }
+            }
+            printf("\n");
+        }
+    }
+    if(sct[valeur].sect.sh_size == 0){
+        printf("La section « %s » n'a pas de données à vidanger.\n", sct[valeur].nom);
+    }
+	free(tab);
 }
 
 void afficheContenuString(char *valeur, FILE *f){
 	printf("%s\n", valeur);
 	int i;
-	int index;
+	int index = 0;
 	
 	for( i = 0; i < header.e_shnum; i++){
 		//printf("valeur : %s sct|i].nom : %s \n", valeur, sct[i].nom);
@@ -681,10 +690,9 @@ void afficheContenuString(char *valeur, FILE *f){
 
 
 
-
 void print_symbole() {
-	printf("\nLa table de symboles « .symtab » contient %d entrées :\n",sym->taille);
-	printf("Num:    Valeur Tail Type    Lien    Vis      Ndx Nom\n");
+	printf("\nSymbol table '.symtab' contains %d entries:\n",sym->taille);
+	printf("Num:    Value  Size Type    Bind    Vis      Ndx Name\n");
 	
 	for (int j=0;j<sym->taille;j++){
 		printf(" %2d : %.8x     %d ",j,sym[j].S.st_value,sym[j].S.st_size);
@@ -757,3 +765,4 @@ void print_symbole() {
 	printf("\n");
 	}
 }
+

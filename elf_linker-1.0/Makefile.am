@@ -15,16 +15,20 @@ LDADD=-lpthread
 SUBDIRS=
 SUBDIRS+=. Examples_loader
 
-bin_PROGRAMS=
+
+bin_PROGRAMS= main modifier_elf
 bin_PROGRAMS+=ARM_runner_example
 
+main_SOURCES= main.c
+modifier_elf_SOURCES= modifier_elf.c
+lecture_elf_SOURCES= lecture_elf.c
 
-COMMON=debug.h debug.c util.h util.c
+COMMON=debug.h debug.c util.h util.c 
+
 
 EXTRA_DIST=filtre.pl
 SIMULATOR_INTERFACE=csapp.h csapp.c scanner.h scanner.l gdb_protocol.h gdb_protocol.c arm_simulator_interface.h arm_simulator_interface.c
 
 ARM_runner_example_SOURCES=$(COMMON) $(SIMULATOR_INTERFACE) ARM_runner_example.c
-
 EXTRA_DIST+=sample_run.sh
 

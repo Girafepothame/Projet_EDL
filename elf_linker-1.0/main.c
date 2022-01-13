@@ -42,7 +42,6 @@ int main(int argc , char **argv)
     
     lectureSection(f);
 
-
     lectureSymbol(f);
 
 	lectureReloc(f);
@@ -76,6 +75,8 @@ int main(int argc , char **argv)
 	}
 
     fclose(f);
+
+    free(sct);
 
     return 0;
 }
