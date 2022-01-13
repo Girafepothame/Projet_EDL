@@ -3,13 +3,13 @@ echo Vérifiez que les informations sont consistantes. Appuyez sur Entree pour p
 declare -a base
 declare -a test
 
-for numtest in 1 2 3
+for numtest in 1 2 3 4
 do
 	echo ""
 	echo Test de example$numtest.o :
 	readelf -h Examples_loader/example$numtest.o > sortie
 	split -d -l1 sortie base-
-	./lecture_elf -h Examples_loader/example$numtest.o > sortie
+	./main -h Examples_loader/example$numtest.o > sortie
 	split -d -l1 sortie test-
 	i=0
 	s=$( printf "%02d\n" "$i" )
